@@ -1,42 +1,126 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Redirect Button</title>
-
-  <style>
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #f4f4f4;
-      font-family: Arial, sans-serif;
-    }
-
-    .btn {
-      padding: 15px 30px;
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 18px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-
-    .btn:hover {
-      background: #005fcc;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Opening in browser…</title>
+<style>
+  body{font-family:system-ui,Arial;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;background:#fff;color:#111}
+  .card{max-width:420px;padding:28px;border-radius:12px;box-shadow:0 6px 30px rgba(0,0,0,.08);text-align:center}
+  .title{font-size:20px;margin-bottom:6px}
+  .count{font-size:16px;color:#666;margin-bottom:14px}
+  .hint{font-size:14px;color:#666}
+  a.fallback{display:inline-block;margin-top:12px;padding:8px 14px;border-radius:8px;text-decoration:none;background:#0b6cff;color:#fff}
+</style>
 </head>
-
 <body>
+  <div class="card" role="main">
+    <div class="title">You will be taken to the browser shortly…</div>
+    <div class="count">Redirecting in <strong id="secs">3</strong> second<span id="sSuffix">s</span>…</div>
+    <div class="hint">If nothing happens, tap the button below.</div>
+    <a id="fallbackBtn" class="fallback" href="#" rel="noopener noreferrer" target="_blank">Open in browser now</a>
+  </div>
 
-  <button class="btn" onclick="window.location.href='https://ziipcloud.blogspot.com/';">
-    Go to Anezom
-  </button>
+<script>
+(function() {
+  'use strict';
 
+  // <<< CHANGE TARGET HERE to your final destination >>>
+  var TARGET = "https://www.mbgame.site"; // final destination (must be https)
+  var COUNTDOWN = 3; // seconds
+
+  // Utility
+  function isAndroid() {
+    return /android/i.test(navigator.userAgent || '');
+  }
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+  }
+
+  // Update fallback button
+  var fallback = document.getElementById('fallbackBtn');
+  fallback.href = TARGET;
+  fallback.addEventListener('click', function () {
+    // let normal click open external browser (target=_blank helps)
+  });
+
+  // Countdown UI
+  var secs = document.getElementById('secs');
+  var remaining = COUNTDOWN;
+  secs.textContent = remaining;
+  var iv = setInterval(function(){
+    remaining--;
+    if (remaining <= 0) { clearInterval(iv); secs.textContent = '0'; document.getElementById('sSuffix').style.display='none'; }
+    else secs.textContent = remaining;
+  }, 1000);
+
+  // Sequence of attempts AFTER WAIT
+  setTimeout(function(){
+    // 1) FIRST TRY: Android Chrome intent (best for many Android devices)
+    if (isAndroid()) {
+      try {
+        // Build intent:// URL
+        var stripped = TARGET.replace(/^https?:\/\//i, '');
+        var intentURL = 'intent://' + stripped + '#Intent;scheme=https;package=com.android.chrome;end;';
+
+        // Attempt to open Chrome via intent
+        window.location.href = intentURL;
+
+        // If the browser swallowed the intent and nothing happened, fallback chain below will handle.
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // 2) SECOND TRY (very short delay): googlechrome:// scheme (Chrome custom scheme)
+    setTimeout(function(){
+      if (isAndroid()) {
+        try {
+          var chromeScheme = 'googlechrome://navigate?url=' + encodeURIComponent(TARGET);
+          // Open custom scheme in new window (some in-app browsers treat _blank as external)
+          var w = window.open(chromeScheme, '_blank', 'noopener,noreferrer');
+          if (w) w.close();
+        } catch (e){}
+      }
+    }, 250);
+
+    // 3) THIRD TRY: programmatic anchor click (target=_blank)
+    setTimeout(function(){
+      try {
+        var a = document.createElement('a');
+        a.href = TARGET;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        // Some in-app browsers treat programmatic click as user gesture when triggered in timer
+        document.body.appendChild(a);
+        var evt = new MouseEvent('click', {view: window, bubbles: true, cancelable: true});
+        a.dispatchEvent(evt);
+        document.body.removeChild(a);
+      } catch (e){}
+    }, 600);
+
+    // 4) FOURTH TRY: window.open with _blank
+    setTimeout(function(){
+      try {
+        var newWin = window.open(TARGET, '_blank', 'noopener,noreferrer');
+        // if opened, optionally close it after small delay - leave it
+        if (!newWin) {
+          // popup blocked or in-app prevented it → try location replace as final fallback
+          location.replace(TARGET);
+        }
+      } catch (e){
+        try { location.replace(TARGET); } catch(err){}
+      }
+    }, 900);
+
+    // final fallback: location.href (last resort)
+    setTimeout(function(){
+      try { location.href = TARGET; } catch(e){}
+    }, 1200);
+
+  }, COUNTDOWN * 1000 + 50); // start after countdown + tiny offset
+
+})();
+</script>
 </body>
 </html>
